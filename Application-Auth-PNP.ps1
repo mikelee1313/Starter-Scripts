@@ -50,22 +50,22 @@
 $debug = $false
 
 # ---- Tenant & App Registration ----
-$tenantId = ''   # Tenant ID or verified domain, e.g. 'contoso.onmicrosoft.com'
-$clientId = ''   # Application (client) ID of the Entra ID app registration
+$tenantId = '9cfc42cb-51da-4055-87e9-b20a170b6ba3'   # Tenant ID or verified domain, e.g. 'contoso.onmicrosoft.com'
+$clientId = '1e488dc4-1977-48ef-8d4d-9856f4e04536'   # Application (client) ID of the Entra ID app registration
 
 # ---- Tenant root SharePoint URL ----
-$tenantUrl = ''   # e.g. 'https://contoso.sharepoint.com'
+$tenantUrl = 'https://m365cpi13246019.sharepoint.com'   # e.g. 'https://contoso.sharepoint.com'
 
 # ---- Default site to connect to at startup ----
 # Use the tenant admin URL for admin-level operations, or a specific site collection URL.
 # e.g. 'https://contoso-admin.sharepoint.com'  or  'https://contoso.sharepoint.com/sites/MySite'
-$defaultSiteUrl = ''
+$defaultSiteUrl = 'https://m365cpi13246019.sharepoint.com'
 
 # ---- Authentication type: 'Certificate' or 'ClientSecret' ----
 $AuthType = 'Certificate'
 
 # Certificate thumbprint (used when $AuthType = 'Certificate')
-$Thumbprint = 'B696FDCFE1453F3FBC6031F54DE988DA0ED905A9'
+$Thumbprint = '216f5dd7327719bc8cf15ff3c077adf59ace0c23'
 
 # Certificate store location: 'LocalMachine' or 'CurrentUser'
 $CertStore = 'LocalMachine'
@@ -137,8 +137,10 @@ function Connect-ToPnPSite {
             if (-not (Test-Path "Cert:\$CertStore\My\$Thumbprint")) {
                 throw "Certificate $Thumbprint not found in Cert:\$CertStore\My"
             }
-            Connect-PnPOnline -Url $Url -ClientId $clientId -Tenant $tenantId `
-                -Thumbprint $Thumbprint -ErrorAction Stop
+            Invoke-PnPWithRetry {
+                Connect-PnPOnline -Url $Url -ClientId $clientId -Tenant $tenantId `
+                    -Thumbprint $Thumbprint -ErrorAction Stop
+            }
             Write-Host "  Connected (Certificate) -> $Url" -ForegroundColor Green
         }
         catch {
@@ -151,7 +153,9 @@ function Connect-ToPnPSite {
             throw 'Client secret is empty. Set the PNP_CLIENT_SECRET environment variable before running.'
         }
         try {
-            Connect-PnPOnline -Url $Url -ClientId $clientId -ClientSecret $clientSecret -ErrorAction Stop
+            Invoke-PnPWithRetry {
+                Connect-PnPOnline -Url $Url -ClientId $clientId -ClientSecret $clientSecret -ErrorAction Stop
+            }
             Write-Host "  Connected (ClientSecret) -> $Url" -ForegroundColor Green
         }
         catch {
@@ -252,6 +256,7 @@ try {
     # Connect to the default site at startup.
     # For scripts that iterate multiple sites, call Connect-ToPnPSite inside the loop.
     Connect-ToPnPSite
+    get-pnpweb | Select-Object title, url | format-table -auto
 
     #----------------------------------------------------------
     # Add your PnP cmdlet calls below.
